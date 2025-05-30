@@ -27,23 +27,23 @@ let purchases = [];
 function doSplit() {
     const balance = {};
 
+    // initialize balance
+    persons.forEach((p) => {
+        balance[`${p.name}-${p.id}`] = 0;
+    });
+    // check purchases one by one, calculate balance of each user accordingly
     purchases.forEach((purchase, i) => {
-        const isFirstIteration = i == 0;
         const { buyerCredit, participantDebt } = splitPurchase(purchase);
         const { id, buyer, participants, item, price } = purchase;
-
-        if (isFirstIteration) {
-            [buyer, ...participants].forEach((p) => {
-                balance[`${p.name}-${p.id}`] = 0;
-            });
-        }
 
         balance[`${buyer.name}-${buyer.id}`] += buyerCredit;
         participants.forEach((p) => {
             balance[`${p.name}-${p.id}`] -= participantDebt;
         });
     });
+    console.log("doSplit #1", { balance, purchases });
 
+    // separate creditors (positive balance) from debtors (negative balance)
     const creditors = Object.entries(balance)
         .filter(([person, balance]) => balance >= 0)
         .sort(([aName, aBalance], [bName, bBalance]) => bBalance - aBalance);
@@ -55,13 +55,17 @@ function doSplit() {
     let outstandingCredit = 0;
     const [mainCreditor, mainCreditorBalance] = creditors[0];
     const payments = [];
-
+    // all debtors pay their debts to the mainCreditor (the creditor who's spent more money)
+    // create a payment entry for each debtor towards the mainCreditor
     debtors.forEach(([debtor, debt]) => {
         const value = Math.abs(debt);
         outstandingCredit += value;
         payments.push({ debtor, creditor: mainCreditor, value });
     });
-
+    // then mainCreditor subtracts the gross value of all payments he's received.
+    // this what we call the outstandingCredit.
+    // create a payment from the mainCreditor to the nextCreditor in the value of outstandingCredit
+    // keep doing so from a creditor to the next until the outstandingCredit equals to zero
     creditors.forEach(([creditor, credit], i) => {
         outstandingCredit -= credit;
         const nextCreditorEntry = creditors[i + 1];
@@ -73,19 +77,17 @@ function doSplit() {
         }
     });
 
-    console.log({ balance, payments });
+    console.log("doSplit #2", { balance, payments });
 }
 
 function splitPurchase(purchase) {
-    // console.log(purchase);
     const { id, buyer, participants, item, price } = purchase;
 
     const totalPeople = participants.length + 1;
-    const evenSplit = price / totalPeople;
-    const buyerCredit = evenSplit * participants.length;
-    const participantDebt = evenSplit;
+    const participantDebt = price / totalPeople; // even split
+    const buyerCredit = participantDebt * participants.length;
 
-    // console.log({ evenSplit, buyerCredit, participantDebt });
+    console.log("splitPurchase", { price, participantDebt, buyerCredit });
     return { buyerCredit, participantDebt };
 }
 
