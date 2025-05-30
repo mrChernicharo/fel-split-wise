@@ -14,7 +14,7 @@ const priceInput = document.querySelector("#price-input");
 /** @type{HTMLSelectElement} */
 const buyerSelect = document.querySelector("#buyer-select");
 /** @type{HTMLDivElement} */
-const participantsList = document.querySelector("#participants-list");
+const purchaseParticipantsList = document.querySelector("#participants-list");
 /** @type{HTMLButtonElement} */
 const purchaseAddBtn = document.querySelector("#purchase-add-btn");
 
@@ -25,6 +25,7 @@ let persons = [];
 let purchases = [];
 let finalPayments = [];
 
+/* core logic */
 function doSplit() {
     const balance = {};
 
@@ -97,6 +98,7 @@ function splitPurchase(purchase) {
     return { buyerCredit, participantDebt };
 }
 
+/* helpers */
 function createNewId(arr) {
     for (let i = 0; i < arr.length; i++) {
         const item = arr[i];
@@ -127,6 +129,7 @@ function getBuyerId() {
     return buyerSelect.value;
 }
 
+/* events */
 function addPerson() {
     if (!personInput.value) return;
 
@@ -149,7 +152,6 @@ function deletePerson(ev) {
     persons = persons.filter((p) => p.id !== +id);
 
     doSplit();
-
     populatePersonList();
     populateParticipantsList();
     populateBuyerSelect();
@@ -161,7 +163,7 @@ function addPurchase() {
 
     const buyerId = getBuyerId();
 
-    const selectedCheckboxes = Array.from(participantsList.children)
+    const selectedCheckboxes = Array.from(purchaseParticipantsList.children)
         .map((ele) => {
             const children = Array.from(ele.children);
             return children.find((ele) => ele.tagName == "INPUT");
@@ -201,13 +203,14 @@ function deletePurchase(ev) {
     populateFinalPaymentsList();
 }
 
+/* DOM */
 function populatePurchaseList() {
     purchaseList.innerHTML = "";
 
     purchases.forEach((purchase) => {
         const li = document.createElement("li");
         li.value = purchase.id;
-        li.textContent = `${purchase.id} ${purchase.item} R$${purchase.price}`;
+        li.textContent = `${purchase.id} - ${purchase.item} R$${purchase.price}`;
 
         const btn = document.createElement("button");
         btn.dataset.purchaseId = purchase.id;
@@ -227,7 +230,8 @@ function populatePurchaseList() {
             innerUl.append(participantLi);
         });
 
-        li.append(btn, innerUl);
+        const br = document.createElement("br");
+        li.append(btn, br, innerUl);
         purchaseList.append(li);
     });
 }
@@ -244,7 +248,7 @@ function populateBuyerSelect() {
 }
 
 function populateParticipantsList() {
-    participantsList.innerHTML = "";
+    purchaseParticipantsList.innerHTML = "";
 
     console.log(getBuyerId());
 
@@ -264,7 +268,7 @@ function populateParticipantsList() {
         label.textContent = person.name;
 
         div.append(checkbox, label);
-        participantsList.append(div);
+        purchaseParticipantsList.append(div);
     });
 }
 
@@ -316,6 +320,7 @@ function populateFinalPaymentsList() {
     });
 }
 
+/* localStorage */
 function syncData() {
     localStorage.setItem("persons", JSON.stringify(persons));
     localStorage.setItem("purchases", JSON.stringify(purchases));
@@ -333,16 +338,40 @@ function loadStoredData() {
     populateFinalPaymentsList();
 }
 
+/* initialization */
 function appendListeners() {
     personAddBtn.addEventListener("click", addPerson);
     purchaseAddBtn.addEventListener("click", addPurchase);
 }
 
 function main() {
-    // load stored data
     loadStoredData();
-
     appendListeners();
 }
 
 main();
+
+// const uiPartNames = {
+//     buyerSelect: "buyerSelect",
+//     personList: "personList",
+//     purchaseParticipantsList: "purchaseParticipantsList",
+//     purchaseList: "purchaseList",
+//     finalPaymentsList: "finalPaymentsList",
+// };
+
+// const uiPartPopulateFns = {
+//     [uiPartNames.buyerSelect]: populateBuyerSelect,
+//     [uiPartNames.personList]: populatePersonList,
+//     [uiPartNames.purchaseParticipantsList]: populateParticipantsList,
+//     [uiPartNames.purchaseList]: populatePurchaseList,
+//     [uiPartNames.finalPaymentsList]: populateFinalPaymentsList,
+// };
+
+// /** @param {Array<keyof uiPartNames>} uiParts  */
+// function updateUi(uiParts) {
+//     const uniqueUiParts = [...new Set(...uiParts)];
+//     console.log({ uniqueUiParts, uiPartNames, uiPartPopulateFns });
+//     uniqueUiParts.forEach((partName) => {
+//         uiPartPopulateFns[partName]();
+//     });
+// }
