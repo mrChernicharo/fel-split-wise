@@ -350,28 +350,3 @@ function main() {
 }
 
 main();
-
-// const uiPartNames = {
-//     buyerSelect: "buyerSelect",
-//     personList: "personList",
-//     purchaseParticipantsList: "purchaseParticipantsList",
-//     purchaseList: "purchaseList",
-//     finalPaymentsList: "finalPaymentsList",
-// };
-
-// const uiPartPopulateFns = {
-//     [uiPartNames.buyerSelect]: populateBuyerSelect,
-//     [uiPartNames.personList]: populatePersonList,
-//     [uiPartNames.purchaseParticipantsList]: populateParticipantsList,
-//     [uiPartNames.purchaseList]: populatePurchaseList,
-//     [uiPartNames.finalPaymentsList]: populateFinalPaymentsList,
-// };
-
-// /** @param {Array<keyof uiPartNames>} uiParts  */
-// function updateUi(uiParts) {
-//     const uniqueUiParts = [...new Set(...uiParts)];
-//     console.log({ uniqueUiParts, uiPartNames, uiPartPopulateFns });
-//     uniqueUiParts.forEach((partName) => {
-//         uiPartPopulateFns[partName]();
-//     });
-// }
