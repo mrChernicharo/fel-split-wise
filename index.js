@@ -1,6 +1,3 @@
-/** @type{HTMLButtonElement} */
-const splitBtn = document.querySelector("#split-btn");
-
 /** @type{HTMLListElement} */
 const personList = document.querySelector("#person-list");
 /** @type{HTMLInputElement} */
@@ -21,8 +18,12 @@ const participantsList = document.querySelector("#participants-list");
 /** @type{HTMLButtonElement} */
 const purchaseAddBtn = document.querySelector("#purchase-add-btn");
 
+/** @type{HTMLListElement} */
+const finalPaymentsList = document.querySelector("#final-payments-list");
+
 let persons = [];
 let purchases = [];
+let finalPayments = [];
 
 function doSplit() {
     const balance = {};
@@ -52,15 +53,18 @@ function doSplit() {
         .filter(([person, balance]) => balance < 0)
         .sort(([aName, aBalance], [bName, bBalance]) => aBalance - bBalance);
 
+    finalPayments = [];
     let outstandingCredit = 0;
     const [mainCreditor, mainCreditorBalance] = creditors[0];
-    const payments = [];
+
     // all debtors pay their debts to the mainCreditor (the creditor who's spent more money)
     // create a payment entry for each debtor towards the mainCreditor
     debtors.forEach(([debtor, debt]) => {
         const value = Math.abs(debt);
         outstandingCredit += value;
-        payments.push({ debtor, creditor: mainCreditor, value });
+        const payment = { debtor, creditor: mainCreditor, value };
+        console.log("debtor payment", payment);
+        finalPayments.push(payment);
     });
     // then mainCreditor subtracts the gross value of all payments he's received.
     // this what we call the outstandingCredit.
@@ -70,14 +74,16 @@ function doSplit() {
         outstandingCredit -= credit;
         const nextCreditorEntry = creditors[i + 1];
 
-        if (nextCreditorEntry) {
+        if (nextCreditorEntry && outstandingCredit != 0) {
             const [nextCreditor] = nextCreditorEntry;
             const payment = { debtor: creditor, creditor: nextCreditor, value: outstandingCredit };
-            payments.push(payment);
+            console.log("creditor payment", payment);
+            finalPayments.push(payment);
         }
     });
 
-    console.log("doSplit #2", { balance, payments });
+    console.log("doSplit #2", { balance, finalPayments });
+    syncData();
 }
 
 function splitPurchase(purchase) {
@@ -87,7 +93,7 @@ function splitPurchase(purchase) {
     const participantDebt = price / totalPeople; // even split
     const buyerCredit = participantDebt * participants.length;
 
-    console.log("splitPurchase", { price, participantDebt, buyerCredit });
+    // console.log("splitPurchase", { price, participantDebt, buyerCredit });
     return { buyerCredit, participantDebt };
 }
 
@@ -104,6 +110,19 @@ function createNewId(arr) {
     return arr.length + 1;
 }
 
+function getPersonBalance(person) {
+    let personBalance = 0;
+    (purchases || []).forEach((purchase) => {
+        const { buyerCredit, participantDebt } = splitPurchase(purchase);
+        if (purchase.buyer.id == person.id) {
+            personBalance += buyerCredit;
+        } else if (purchase.participants.some((part) => part.id == person.id)) {
+            personBalance -= participantDebt;
+        }
+    });
+    return personBalance;
+}
+
 function getBuyerId() {
     return buyerSelect.value;
 }
@@ -117,10 +136,11 @@ function addPerson() {
     persons.sort((a, b) => a.id - b.id);
 
     personInput.value = "";
-    syncData();
+    doSplit();
     populatePersonList();
     populateParticipantsList();
     populateBuyerSelect();
+    populateFinalPaymentsList();
 }
 
 function deletePerson(ev) {
@@ -128,10 +148,12 @@ function deletePerson(ev) {
     console.log("deletePerson", { ev, id, persons });
     persons = persons.filter((p) => p.id !== +id);
 
-    syncData();
+    doSplit();
+
     populatePersonList();
     populateParticipantsList();
     populateBuyerSelect();
+    populateFinalPaymentsList();
 }
 
 function addPurchase() {
@@ -162,8 +184,10 @@ function addPurchase() {
     purchases.sort((a, b) => a.id - b.id);
 
     console.log("add purchase", purchase);
-    syncData();
+    doSplit();
     populatePurchaseList();
+    populatePersonList();
+    populateFinalPaymentsList();
 }
 
 function deletePurchase(ev) {
@@ -171,8 +195,10 @@ function deletePurchase(ev) {
     const id = ev.target.dataset.purchaseId;
     console.log("deletePerson", { ev, id, purchases });
     purchases = purchases.filter((p) => p.id !== +id);
-    syncData();
+    doSplit();
     populatePurchaseList();
+    populatePersonList();
+    populateFinalPaymentsList();
 }
 
 function populatePurchaseList() {
@@ -248,40 +274,68 @@ function populatePersonList() {
     persons.forEach((person) => {
         const li = document.createElement("li");
         li.value = person.id;
-        li.textContent = `${person.name} ID: ${person.id} `;
+        // li.textContent = `${person.name} ID: ${person.id} `;
 
+        const nameDiv = document.createElement("div");
+        nameDiv.textContent = `${person.name} ID: ${person.id}`;
+
+        const balanceDiv = document.createElement("balance");
+        balanceDiv.textContent = `balance: R$${getPersonBalance(person).toFixed(2)}`;
+
+        const btnDiv = document.createElement("div");
         const btn = document.createElement("button");
         btn.dataset.personId = person.id;
         btn.textContent = "❌";
         btn.addEventListener("click", deletePerson);
+        btnDiv.append(btn);
 
-        li.append(btn);
+        li.append(nameDiv, balanceDiv, btnDiv);
         personList.append(li);
     });
 }
 
-function updateUI() {
-    populatePersonList();
-    populateParticipantsList();
-    populateBuyerSelect();
-    populatePurchaseList();
+function populateFinalPaymentsList() {
+    finalPaymentsList.innerHTML = "";
+
+    if (finalPayments.length == 0) {
+        const li = document.createElement("li");
+        li.textContent = "All Good! No one has to pay anyone";
+        finalPaymentsList.append(li);
+        return;
+    }
+
+    finalPayments.forEach((payment) => {
+        const { debtor, creditor, value } = payment;
+        const [debtorName, debtorId] = debtor.split("-");
+        const [creditorName, creditorId] = creditor.split("-");
+
+        const li = document.createElement("li");
+
+        li.textContent = `${debtorName} pays R$${value.toFixed(2)} to ${creditorName}`;
+        finalPaymentsList.append(li);
+    });
 }
 
 function syncData() {
     localStorage.setItem("persons", JSON.stringify(persons));
     localStorage.setItem("purchases", JSON.stringify(purchases));
+    localStorage.setItem("finalPayments", JSON.stringify(finalPayments));
 }
 
 function loadStoredData() {
     persons = JSON.parse(localStorage.getItem("persons")) || [];
     purchases = JSON.parse(localStorage.getItem("purchases")) || [];
-    updateUI();
+    finalPayments = JSON.parse(localStorage.getItem("finalPayments")) || [];
+    populatePersonList();
+    populateParticipantsList();
+    populateBuyerSelect();
+    populatePurchaseList();
+    populateFinalPaymentsList();
 }
 
 function appendListeners() {
     personAddBtn.addEventListener("click", addPerson);
     purchaseAddBtn.addEventListener("click", addPurchase);
-    splitBtn.addEventListener("click", doSplit);
 }
 
 function main() {
